@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ filename }} — Preview{% endblock %}
+{% block body %}
+<nav class="navbar">
+  <h1><span>File</span> Share</h1>
+  <div class="user-info">
+    <span>{{ username }}</span>
+    <a href="{{ url_for('logout') }}">Sign out</a>
+  </div>
+</nav>
+<div class="container">
+  <div class="breadcrumb">
+    <a href="{{ url_for('browse') }}">~ (home)</a>
+    {% for bc in breadcrumbs %}
+      <span>/</span>
+      <a href="{{ url_for('browse', subpath=bc.path) }}">{{ bc.name }}</a>
+    {% endfor %}
+    <span>/</span>
+    <span style="color:var(--fg);">{{ filename }}</span>
+  </div>
+
+  <div class="preview-header">
+    <h2>{{ filename }}</h2>
+    <div style="display:flex; gap:0.5rem;">
+      <a class="btn-sm" href="{{ url_for('browse', subpath=parent_path) }}">Back</a>
+      <a class="btn-sm" href="{{ url_for('download', subpath=subpath) }}">Download</a>
+    </div>
+  </div>
+
+  <div class="preview-container">
+    {% if preview_type == 'image' %}
+      <img src="{{ url_for('raw_file', subpath=subpath) }}" alt="{{ filename }}">
+
+    {% elif preview_type == 'video' %}
+      <video controls>
+        <source src="{{ url_for('raw_file', subpath=subpath) }}" type="{{ mime_type }}">
+        Your browser does not support video playback.
+      </video>
+
+    {% elif preview_type == 'audio' %}
+      <audio controls style="width:100%;">
+        <source src="{{ url_for('raw_file', subpath=subpath) }}" type="{{ mime_type }}">
+        Your browser does not support audio playback.
+      </audio>
+
+    {% elif preview_type == 'pdf' %}
+      <iframe src="{{ url_for('raw_file', subpath=subpath) }}"></iframe>
+
+    {% elif preview_type == 'text' %}
+      <pre><code>{{ text_content }}</code></pre>
+
+    {% else %}
+      <div class="empty">Preview not available for this file type.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

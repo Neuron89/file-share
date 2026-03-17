@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}{{ current_path or 'Home' }} — File Share{% endblock %}
+{% block body %}
+<nav class="navbar">
+  <h1><span>File</span> Share</h1>
+  <div class="user-info">
+    <span>{{ username }}</span>
+    <a href="{{ url_for('logout') }}">Sign out</a>
+  </div>
+</nav>
+<div class="container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash flash-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <div style="background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:0.5rem 0.75rem; margin-bottom:1rem; font-size:0.8rem; color:var(--fg2);">
+    Save files to: <code style="color:var(--amber);">{{ user_root }}/</code>
+  </div>
+
+  <div class="breadcrumb">
+    <a href="{{ url_for('browse') }}">~ (home)</a>
+    {% for bc in breadcrumbs %}
+      <span>/</span>
+      <a href="{{ url_for('browse', subpath=bc.path) }}">{{ bc.name }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="toggle-dot">
+    {% if show_dotfiles %}
+      <a href="{{ url_for('browse', subpath=current_path, sort=sort_by, order=order) }}">Hide dotfiles</a>
+    {% else %}
+      <a href="{{ url_for('browse', subpath=current_path, dotfiles=1, sort=sort_by, order=order) }}">Show dotfiles</a>
+    {% endif %}
+  </div>
+
+  {% if items %}
+  <table class="file-table">
+    <thead>
+      <tr>
+        <th class="icon"></th>
+        {% macro sort_link(col, label) %}
+          {% set next_order = 'desc' if sort_by == col and order == 'asc' else 'asc' %}
+          {% set arrow = '' %}
+          {% if sort_by == col %}
+            {% set arrow = '&#9650;' if order == 'asc' else '&#9660;' %}
+          {% endif %}
+          <a href="{{ url_for('browse', subpath=current_path, sort=col, order=next_order, dotfiles=('1' if show_dotfiles else '')) }}">
+            {{ label }} <span class="sort-arrow">{{ arrow|safe }}</span>
+          </a>
+        {% endmacro %}
+        <th>{{ sort_link('name', 'Name') }}</th>
+        <th>{{ sort_link('size', 'Size') }}</th>
+        <th>{{ sort_link('date', 'Date Modified') }}</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if current_path %}
+      <tr>
+        <td class="icon">&#x1F519;</td>
+        <td colspan="4">
+          {% set parent = '/'.join(current_path.split('/')[:-1]) %}
+          <a href="{{ url_for('browse', subpath=parent) }}">..</a>
+        </td>
+      </tr>
+      {% endif %}
+      {% for item in items %}
+      <tr>
+        <td class="icon">{% if item.is_dir %}&#x1F4C1;{% else %}&#x1F4C4;{% endif %}</td>
+        <td>
+          <a href="{{ url_for('browse', subpath=item.rel_path) }}">{{ item.name }}</a>
+        </td>
+        <td class="size">{{ item.size }}</td>
+        <td class="date">{{ item.modified_fmt }}</td>
+        <td class="actions">
+          {% if item.preview_type %}
+            <a class="btn-sm" href="{{ url_for('preview', subpath=item.rel_path) }}">Preview</a>
+          {% endif %}
+          {% if not item.is_dir %}
+            <a class="btn-sm" href="{{ url_for('download', subpath=item.rel_path) }}">Download</a>
+          {% endif %}
+          <button class="btn-sm" onclick="openRename('{{ item.rel_path }}', '{{ item.name }}')">Rename</button>
+          <button class="btn-sm" onclick="openMove('{{ item.rel_path }}', '{{ item.name }}')">Move</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">This directory is empty.</div>
+  {% endif %}
+</div>
+
+<!-- Rename Modal -->
+<div class="modal-overlay" id="renameModal">
+  <div class="modal">
+    <h3>Rename</h3>
+    <form method="POST" action="{{ url_for('rename') }}">
+      <input type="hidden" name="path" id="renamePath">
+      <div class="form-group">
+        <label>New name</label>
+        <input type="text" name="new_name" id="renameInput" required autocomplete="off">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal('renameModal')">Cancel</button>
+        <button type="submit" class="btn-confirm">Rename</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Move Modal -->
+<div class="modal-overlay" id="moveModal">
+  <div class="modal">
+    <h3>Move <span id="moveFileName" style="color:var(--amber);"></span></h3>
+    <form method="POST" action="{{ url_for('move') }}">
+      <input type="hidden" name="path" id="movePath">
+      <div class="form-group">
+        <label>Destination folder</label>
+        <select name="dest_dir" id="moveDest">
+          {% for d in all_dirs %}
+            <option value="{{ d }}">{{ d if d else '~ (home)' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal('moveModal')">Cancel</button>
+        <button type="submit" class="btn-confirm">Move</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openRename(path, name) {
+  document.getElementById('renamePath').value = path;
+  document.getElementById('renameInput').value = name;
+  document.getElementById('renameModal').classList.add('active');
+  setTimeout(() => {
+    const inp = document.getElementById('renameInput');
+    inp.focus();
+    const dot = name.lastIndexOf('.');
+    inp.setSelectionRange(0, dot > 0 ? dot : name.length);
+  }, 50);
+}
+
+function openMove(path, name) {
+  document.getElementById('movePath').value = path;
+  document.getElementById('moveFileName').textContent = name;
+  document.getElementById('moveModal').classList.add('active');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => {
+    if (e.target === el) el.classList.remove('active');
+  });
+});
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(el => el.classList.remove('active'));
+  }
+});
+</script>
+{% endblock %}

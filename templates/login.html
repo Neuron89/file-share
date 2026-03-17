@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Login — File Share{% endblock %}
+{% block body %}
+<div class="login-wrap">
+  <div class="login-card">
+    <h2><span>File</span> Share</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    <form method="POST">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Sign In</button>
+    </form>
+    <p style="text-align:center; margin-top:1rem; font-size:0.85rem;">
+      New here? <a href="{{ url_for('register') }}">Register</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

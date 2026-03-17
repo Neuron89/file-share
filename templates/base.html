@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}File Share{% endblock %}</title>
+<style>
+  :root {
+    --bg: #0f172a; --bg2: #1e293b; --bg3: #334155;
+    --fg: #f1f5f9; --fg2: #94a3b8;
+    --amber: #f59e0b; --amber-dim: #92400e;
+    --navy: #1e3a5f;
+    --border: #475569;
+    --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --radius: 8px;
+    --green: #22c55e; --red: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--font); background: var(--bg); color: var(--fg); min-height: 100vh; }
+  a { color: var(--amber); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .navbar {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1.5rem; display: flex; align-items: center; justify-content: space-between;
+  }
+  .navbar h1 { font-size: 1.25rem; font-weight: 700; }
+  .navbar h1 span { color: var(--amber); }
+  .navbar .user-info { display: flex; align-items: center; gap: 1rem; font-size: 0.9rem; color: var(--fg2); }
+  .navbar .user-info a { color: var(--fg2); }
+  .navbar .user-info a:hover { color: var(--amber); }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+
+  .flash { padding: 0.75rem 1rem; border-radius: var(--radius); margin-bottom: 1rem; }
+  .flash-error { background: #7f1d1d; color: #fca5a5; }
+  .flash-success { background: #14532d; color: #86efac; }
+
+  /* Login */
+  .login-wrap { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
+  .login-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 2rem; width: 100%; max-width: 380px;
+  }
+  .login-card h2 { margin-bottom: 1.5rem; text-align: center; }
+  .login-card h2 span { color: var(--amber); }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; margin-bottom: 0.25rem; font-size: 0.85rem; color: var(--fg2); }
+  .form-group input, .form-group select {
+    width: 100%; padding: 0.6rem 0.75rem; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+    font-size: 0.95rem; outline: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--amber); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    padding: 0.6rem 1.25rem; border-radius: var(--radius); border: none;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  .btn-primary { background: var(--amber); color: #000; width: 100%; }
+  .btn-primary:hover { background: #d97706; }
+  .btn-sm {
+    padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 4px;
+    background: var(--bg3); color: var(--fg); border: none; cursor: pointer;
+    transition: background 0.15s; text-decoration: none; display: inline-flex;
+    align-items: center; gap: 0.3rem;
+  }
+  .btn-sm:hover { background: var(--amber); color: #000; text-decoration: none; }
+
+  /* Browse */
+  .breadcrumb { font-size: 0.9rem; color: var(--fg2); margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .breadcrumb a { color: var(--amber); }
+
+  .file-table { width: 100%; border-collapse: collapse; }
+  .file-table th {
+    text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600;
+    color: var(--fg2); text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .file-table th a { color: var(--fg2); text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; }
+  .file-table th a:hover { color: var(--amber); }
+  .file-table th .sort-arrow { font-size: 0.7rem; }
+  .file-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--bg3); font-size: 0.9rem; }
+  .file-table tr:hover { background: var(--bg2); }
+  .file-table .icon { width: 24px; text-align: center; color: var(--fg2); }
+  .file-table .size { color: var(--fg2); white-space: nowrap; }
+  .file-table .date { color: var(--fg2); white-space: nowrap; font-size: 0.85rem; }
+  .file-table .actions { white-space: nowrap; }
+  .file-table .actions { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+
+  .toggle-dot { font-size: 0.8rem; margin-bottom: 0.5rem; }
+
+  .empty { text-align: center; padding: 3rem; color: var(--fg2); }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    z-index: 100; justify-content: center; align-items: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem; width: 90%; max-width: 420px;
+  }
+  .modal h3 { margin-bottom: 1rem; font-size: 1.1rem; }
+  .modal .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
+  .modal .btn-cancel { background: var(--bg3); color: var(--fg); padding: 0.5rem 1rem; border-radius: var(--radius); border: none; cursor: pointer; }
+  .modal .btn-confirm { background: var(--amber); color: #000; padding: 0.5rem 1rem; border-radius: var(--radius); border: none; cursor: pointer; font-weight: 600; }
+
+  /* Preview */
+  .preview-container { margin-top: 1rem; }
+  .preview-container img { max-width: 100%; border-radius: var(--radius); }
+  .preview-container video, .preview-container audio { max-width: 100%; }
+  .preview-container iframe { width: 100%; height: 80vh; border: none; border-radius: var(--radius); }
+  .preview-container pre {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1rem; overflow-x: auto; font-size: 0.85rem; max-height: 80vh; overflow-y: auto;
+    white-space: pre-wrap; word-wrap: break-word;
+  }
+  .preview-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;
+  }
+  .preview-header h2 { font-size: 1.1rem; word-break: break-all; }
+</style>
+</head>
+<body>
+{% block body %}{% endblock %}
+</body>
+</html>
