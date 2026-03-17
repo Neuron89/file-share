@@ -71,6 +71,14 @@ def _get_user_folder(username: str) -> Path:
     """Return (and create) the user's folder under the shared root."""
     folder = SHARED_ROOT / username
     folder.mkdir(parents=True, exist_ok=True)
+    # Auto-symlink their home directory if not already present
+    home_link = folder / "home"
+    home_dir = Path(f"/home/{username}")
+    if not home_link.exists() and home_dir.is_dir():
+        try:
+            home_link.symlink_to(home_dir)
+        except OSError:
+            pass  # May lack permission if not owner
     return folder
 
 # ---------------------------------------------------------------------------
