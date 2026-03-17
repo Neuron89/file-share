@@ -87,11 +87,18 @@ def login_required(f):
 
 
 def safe_join(base: Path, rel: str) -> Path:
+    """Resolve path and ensure it's within the user's base dir or a symlinked target."""
     base_path = base.resolve()
     target = (base_path / rel).resolve()
-    if not str(target).startswith(str(base_path)):
-        abort(403)
-    return target
+    if str(target).startswith(str(base_path)):
+        return target
+    # Allow symlinks whose real target is under the user's home directory
+    # (e.g. /home/shared-files/hnester/reports -> /home/hnester/reports)
+    username = base.name  # base is /home/shared-files/<username>
+    home_dir = Path(f"/home/{username}").resolve()
+    if str(target).startswith(str(home_dir)):
+        return target
+    abort(403)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -105,8 +112,16 @@ def human_size(nbytes: int) -> str:
     return f"{nbytes:.1f} PB"
 
 
-def file_info(path: Path, rel_root: Path) -> dict:
+def file_info(path: Path, rel_root: Path, logical_parent: Path | None = None) -> dict:
     stat = path.stat()
+    # Use the logical (non-resolved) path for rel_path so symlinks work
+    if logical_parent is not None:
+        rel = str(logical_parent / path.name)
+    else:
+        try:
+            rel = str(path.relative_to(rel_root))
+        except ValueError:
+            rel = path.name
     return {
         "name": path.name,
         "is_dir": path.is_dir(),
@@ -114,7 +129,7 @@ def file_info(path: Path, rel_root: Path) -> dict:
         "size_bytes": stat.st_size if not path.is_dir() else 0,
         "modified": stat.st_mtime,
         "modified_fmt": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
-        "rel_path": str(path.relative_to(rel_root)),
+        "rel_path": rel,
         "ext": path.suffix.lower(),
     }
 
@@ -247,7 +262,7 @@ def browse(subpath=""):
             if not show_dotfiles and child.name.startswith("."):
                 continue
             try:
-                info = file_info(child, user_root)
+                info = file_info(child, user_root, logical_parent=Path(subpath))
                 info["preview_type"] = get_preview_type(info["ext"])
                 items.append(info)
             except (PermissionError, OSError):
