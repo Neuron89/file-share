@@ -83,6 +83,7 @@
           {% endif %}
           <button class="btn-sm" onclick="openRename('{{ item.rel_path }}', '{{ item.name }}')">Rename</button>
           <button class="btn-sm" onclick="openMove('{{ item.rel_path }}', '{{ item.name }}')">Move</button>
+          <button class="btn-sm btn-danger" onclick="openDelete('{{ item.rel_path }}', '{{ item.name }}', {{ item.is_dir|tojson }})">Delete</button>
         </td>
       </tr>
       {% endfor %}
@@ -133,7 +134,29 @@
   </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>Delete</h3>
+    <p>Are you sure you want to delete <strong id="deleteFileName" style="color:var(--amber);"></strong><span id="deleteDirWarning" style="color:#e74c3c;"></span>?</p>
+    <form method="POST" action="{{ url_for('delete') }}">
+      <input type="hidden" name="path" id="deletePath">
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+        <button type="submit" class="btn-confirm" style="background:#e74c3c;">Delete</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
+function openDelete(path, name, isDir) {
+  document.getElementById('deletePath').value = path;
+  document.getElementById('deleteFileName').textContent = name;
+  document.getElementById('deleteDirWarning').textContent = isDir ? ' and all its contents' : '';
+  document.getElementById('deleteModal').classList.add('active');
+}
+
 function openRename(path, name) {
   document.getElementById('renamePath').value = path;
   document.getElementById('renameInput').value = name;

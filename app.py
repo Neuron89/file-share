@@ -432,6 +432,37 @@ def rename():
     return redirect(url_for("browse", subpath=parent if parent != "." else ""))
 
 
+@app.route("/delete", methods=["POST"])
+@login_required
+def delete():
+    username = session["username"]
+    user_root = _get_user_folder(username)
+    old_path = request.form.get("path", "")
+
+    target = safe_join(user_root, old_path)
+    if not target.exists():
+        abort(404)
+
+    # Safety: don't allow deleting the user root or the home symlink itself
+    if target == user_root.resolve() or target == (user_root / "home").resolve():
+        flash("Cannot delete this item.", "error")
+        parent = str(Path(old_path).parent)
+        return redirect(url_for("browse", subpath=parent if parent != "." else ""))
+
+    name = target.name
+    try:
+        if target.is_dir() and not target.is_symlink():
+            shutil.rmtree(str(target))
+        else:
+            target.unlink()
+        flash(f"Deleted '{name}'.", "success")
+    except OSError as e:
+        flash(f"Delete failed: {e}", "error")
+
+    parent = str(Path(old_path).parent)
+    return redirect(url_for("browse", subpath=parent if parent != "." else ""))
+
+
 @app.route("/move", methods=["POST"])
 @login_required
 def move():
