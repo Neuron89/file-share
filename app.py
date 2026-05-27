@@ -19,8 +19,29 @@ from flask import (
     send_file, session, flash, abort, jsonify,
 )
 
+# Lightweight .env loader (python-dotenv not always installed). Only sets
+# vars that aren't already in os.environ, so systemd / shell wins.
+_env_path = Path(__file__).parent / ".env"
+if _env_path.is_file():
+    for _line in _env_path.read_text().splitlines():
+        _line = _line.strip()
+        if not _line or _line.startswith("#") or "=" not in _line:
+            continue
+        _k, _v = _line.split("=", 1)
+        os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(32))
+
+
+@app.context_processor
+def inject_portal_chrome():
+    """PORTAL_URL + CLARITY_PROJECT_ID exposed to base.html."""
+    return {
+        "PORTAL_URL": os.environ.get("PORTAL_URL", ""),
+        "CLARITY_PROJECT_ID": os.environ.get("CLARITY_PROJECT_ID", ""),
+    }
+
 
 # ---------------------------------------------------------------------------
 # Config
